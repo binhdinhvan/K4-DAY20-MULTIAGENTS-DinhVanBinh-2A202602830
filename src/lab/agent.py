@@ -4,6 +4,52 @@ Pseudo-code: guides/pseudocode/01_agent.md
 Kiểm tra:    pytest tests/test_02_agent.py
 """
 from pathlib import Path
+import os
+import subprocess
+import sys
+from deepagents.backends.local_shell import ExecuteResponse
+
+from deepagents import create_deep_agent
+from deepagents.backends import LocalShellBackend
+
+from .model import make_model
+from .subagents import get_subagents
+
+
+class _WindowsShellBackend(LocalShellBackend):
+    """Run the lab's POSIX shell commands through the bundled Git Bash on Windows."""
+
+    def execute(self, command: str, *, timeout: int | None = None):
+        if not command or not isinstance(command, str):
+            return super().execute(command, timeout=timeout)
+        effective_timeout = timeout if timeout is not None else self._default_timeout
+        bash = r"C:\Program Files\Git\bin\bash.exe"
+        try:
+            result = subprocess.run(
+                [bash, "-c", command],
+                check=False,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                timeout=effective_timeout,
+                env=self._env,
+                cwd=str(self.cwd),
+            )
+            output_parts = []
+            if result.stdout:
+                output_parts.append(result.stdout)
+            if result.stderr:
+                output_parts.extend(f"[stderr] {line}" for line in result.stderr.strip().splitlines())
+            output = "\n".join(output_parts) if output_parts else "<no output>"
+            if result.returncode != 0:
+                output = f"{output.rstrip()}\n\nExit code: {result.returncode}"
+            return ExecuteResponse(output=output, exit_code=result.returncode, truncated=False)
+        except subprocess.TimeoutExpired:
+            return ExecuteResponse(
+                output=f"Error: Command timed out after {effective_timeout} seconds.",
+                exit_code=124,
+                truncated=False,
+            )
 
 # TODO 1: import các thành phần cần dùng, ví dụ:
 #   from deepagents import create_deep_agent
@@ -47,7 +93,22 @@ def make_backend(sandbox: Path):
       - Tác tử chạy được lệnh shell và gọi được `python` (cần đặt PATH).
       - KHÔNG chuyển biến môi trường của bạn vào shell của tác tử (khóa API không được lộ).
     """
-    raise NotImplementedError("TODO 2: cài đặt make_backend (xem guides/pseudocode/01_agent.md)")
+    python_dir = str(Path(sys.executable).parent)
+    git_paths = (r"C:\Program Files\Git\usr\bin", r"C:\Program Files\Git\mingw64\bin") if sys.platform == "win32" else ()
+    env = {
+        "PATH": os.pathsep.join((python_dir, *git_paths, "/usr/local/bin", "/usr/bin", "/bin")),
+        "HOME": str(sandbox),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\WINDOWS"),
+    }
+    backend_type = _WindowsShellBackend if sys.platform == "win32" else LocalShellBackend
+    return backend_type(
+        root_dir=sandbox,
+        virtual_mode=True,
+        inherit_env=False,
+        env=env,
+        timeout=120,
+    )
 
 
 def build_agent(sandbox: Path, mode: str = "single", use_skills: bool = False, model=None):
@@ -64,4 +125,22 @@ def build_agent(sandbox: Path, mode: str = "single", use_skills: bool = False, m
     mode không hợp lệ -> ném ValueError.
     Trả về: đồ thị (graph) đã biên dịch, gọi bằng `.invoke({"messages": [...]})`.
     """
-    raise NotImplementedError("TODO 3: cài đặt build_agent (xem guides/pseudocode/01_agent.md)")
+    if mode not in {"single", "subagents"}:
+        raise ValueError(f"unknown agent mode: {mode}")
+    prompt = BASE_PROMPT
+    kwargs = {}
+    if mode == "subagents":
+        kwargs["subagents"] = [
+            {**sub, "system_prompt": sub["system_prompt"] + " " + PATHS_NOTE}
+            for sub in get_subagents()
+        ]
+        prompt += SUBAGENTS_NOTE
+    if use_skills:
+        kwargs["skills"] = ["/skills/"]
+        prompt += SKILLS_NOTE
+    return create_deep_agent(
+        model=model or make_model(),
+        system_prompt=prompt,
+        backend=make_backend(sandbox),
+        **kwargs,
+    )

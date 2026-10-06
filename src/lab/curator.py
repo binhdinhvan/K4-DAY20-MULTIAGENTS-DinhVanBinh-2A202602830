@@ -7,7 +7,7 @@ Chạy thật:   python -m lab.curator
 import re
 from pathlib import Path
 
-from .tasks import eval_markers   # có sẵn: định danh của tác vụ đánh giá, tính lúc chạy
+from .tasks import ROOT, eval_markers
 
 # ---- CÓ SẴN, KHÔNG SỬA: kiểm tra và tách khối skill (phần dễ sai và liên quan bảo mật) ----------------
 SAFE_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -68,7 +68,58 @@ def curate_skills(results_dir="results", source_condition="baseline", out_dir=No
     model mặc định: make_model() (lab.model).
     Trả về: danh sách đường dẫn SKILL.md đã ghi.
     """
-    raise NotImplementedError("TODO: cài đặt curate_skills (xem guides/pseudocode/04_curator.md)")
+    results_root = Path(results_dir)
+    out_root = Path(out_dir) if out_dir is not None else ROOT / "skills" / "auto"
+    failures = []
+    for run_file in sorted((results_root / source_condition).glob("*/run.json")):
+        run = __import__("json").loads(run_file.read_text(encoding="utf-8"))
+        if run.get("role") != "learn":
+            continue
+        failed = [check for check in run.get("checks", []) if not check.get("passed")]
+        if failed:
+            trace_file = run_file.with_name("trace.md")
+            trace = trace_file.read_text(encoding="utf-8") if trace_file.exists() else ""
+            failures.append(
+                f"Task: {run.get('task')}\n"
+                + "\n".join(f"Check: {c.get('name')}\nDetail: {c.get('detail', '')}" for c in failed)
+                + f"\nTrace tail:\n{trace[-3000:]}"
+            )
+    if not failures:
+        print("warning: no failed checks in learning runs")
+        return []
+    if model is None:
+        from .model import make_model
+        model = make_model()
+    prompt = (
+        "You are writing reusable SKILLs for a software and data engineering agent.\n"
+        "Below are the failed checks (check name and test feedback) and execution traces from training runs.\n"
+        "Identify recurring procedural rules or conventions to prevent similar errors in future tasks.\n"
+        "Rules:\n"
+        "- Skills must be general: do not mention specific task IDs, private task filenames, or exact numbers.\n"
+        "- Each skill MUST have YAML frontmatter with `name` (lowercase alphanumeric and hyphens only, e.g. code-conventions) and `description` (one sentence stating WHEN TO USE).\n"
+        "- Body must be at most 40 lines of actionable instructions, checklists, or conventions.\n"
+        "- Do not mention evaluation tasks, their data, filenames, or answers.\n"
+        f"- Output up to {max_skills} skills, formatted exactly as:\n"
+        "=== SKILL: <name> ===\n"
+        "---\n"
+        "name: <name>\n"
+        "description: <when to use this skill>\n"
+        "---\n"
+        "<instructions>\n"
+        "=== END ===\n\n"
+        + "\n\n".join(failures)
+    )
+    reply = model.invoke(prompt)
+    written = []
+    for name, text in parse_skill_blocks(getattr(reply, "content", reply)):
+        if len(written) >= max_skills or validate_skill(text, expected_name=name):
+            continue
+        destination = out_root / name
+        destination.mkdir(parents=True, exist_ok=True)
+        path = destination / "SKILL.md"
+        path.write_text(text + "\n", encoding="utf-8")
+        written.append(path)
+    return written
 
 
 if __name__ == "__main__":

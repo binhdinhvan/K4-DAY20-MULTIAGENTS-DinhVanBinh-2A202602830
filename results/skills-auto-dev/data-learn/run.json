@@ -1,0 +1,64 @@
+{
+  "task": "data-learn",
+  "condition": "skills-auto",
+  "role": "learn",
+  "error": "GraphRecursionError: Recursion limit of 60 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT",
+  "timestamp": "2026-10-06T08:16:52.962372+00:00",
+  "skills_sha256": "a525b33dea8139fb2da2db4c432cd3d615ae014defe508ec104875dad90a7dca",
+  "seconds": 211.3,
+  "tokens": {
+    "input": 362155,
+    "output": 7444,
+    "total": 369599
+  },
+  "tool_calls": 0,
+  "subagent_calls": 0,
+  "skills_read": 0,
+  "skills_modified": false,
+  "final_message": "",
+  "score": 0.0,
+  "passed": 0,
+  "total": 8,
+  "checks": [
+    {
+      "name": "north_q1_revenue",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "north_q1_orders",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "top_region",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "missing_amount_orders",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "duplicate_rows_removed",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "rule_money_in_cents",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "rule_meta_block",
+      "passed": false,
+      "detail": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\DinhBinh\\\\AppData\\\\Local\\\\Temp\\\\lab-task-l95f35ul\\\\workspace\\\\answer.json'"
+    },
+    {
+      "name": "rule_clean_csv",
+      "passed": false,
+      "detail": "RULE: write workspace/clean.csv with the header order_id,timestamp_utc,region,amount_cents; one row per distinct order with a known amount; timestamp_utc as YYYY-MM-DDTHH:MM:SSZ (UTC); region in canonical spelling (North, South, East, West); amount in integer cents."
+    }
+  ]
+}
