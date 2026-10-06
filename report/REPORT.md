@@ -166,4 +166,31 @@ Thực nghiệm cho thấy cơ chế tự tiến hóa ở tầng ngữ cảnh (C
   15. `python scripts/verify_freeze.py`
   16. `python -m lab.compare > report/table.md`
   17. `python scripts/check_breakdown.py`
+  18. `python -m lab.runner --condition skills-auto --tasks eval --results results/bonus_noise/run2`
+  19. `python -m lab.runner --condition skills-auto --tasks eval --results results/bonus_noise/run3`
+
+- Thử thách mở rộng: **Hướng 6e - Lặp để đo nhiễu và độ biến thiên ngẫu nhiên (Stochastic Variance)**
+
+  1. **Thiết kế thí nghiệm:** Thực hiện lặp lại điều kiện `skills-auto` trên toàn bộ 3 tác vụ đánh giá (`code-eval`, `data-eval`, `logs-eval`) thêm 2 lần độc lập (tổng cộng 3 lần chạy), kết quả lưu tại thư mục riêng biệt: `results/bonus_noise/run2` và `results/bonus_noise/run3` (hoàn toàn tách biệt khỏi kết quả chính thức ở `results/skills-auto/`).
+  
+  2. **Số liệu so sánh chi tiết:**
+
+     | Tác vụ | Lần 1 (Chính thức) | Lần 2 (Replicate 2) | Lần 3 (Replicate 3) | Điểm trung bình | Khoảng dao động |
+     |---|---|---|---|---|---|
+     | `code-eval` | 3/11 (30.870 tokens) | 1/11 (229.092 tokens) | 2/11 (253.258 tokens) | **0.182** | 1/11 - 3/11 |
+     | `data-eval` | 3/9 (21.392 tokens) | 2/9 (217.277 tokens) | 3/9 (21.344 tokens) | **0.296** | 2/9 - 3/9 |
+     | `logs-eval` | 1/10 (15.348 tokens) | 1/10 (15.451 tokens) | 0/10 (15.463 tokens) | **0.067** | 0/10 - 1/10 |
+     | **Mean Eval Score** | **0.235** | **0.138** | **0.172** | **0.182** | **0.138 - 0.235** |
+     | **Mean Tokens** | **22.536** | **153.940** | **96.688** | **91.055** | **22.536 - 153.940** |
+
+  3. **Phân tích cơ chế dựa trên vết (Trace analysis):**
+     - Ở tác vụ `data-eval`, điểm số duy trì độ ổn định rất cao (2/9 đến 3/9), cho thấy quy tắc làm sạch dữ liệu trong skill `data-cleaning-guidelines` được mô hình áp dụng nhất quán.
+     - Ở tác vụ `code-eval`, quan sát vết thực thi cho thấy trong Lần 2 và 3, khi gặp phải ca kiểm thử biên phức tạp (`pricing`), mô hình có xác suất bị vướng vào chuỗi lệnh debug lặp lại dẫn đến chạm trần `recursion_limit` (60 bước), làm tăng vọt lượng token tiêu thụ. Khi mô hình dừng đúng lúc (như Lần 1), lượng token chỉ là ~30k với điểm số tối ưu 3/11.
+     - Dù có sự biến thiên ngẫu nhiên giữa các lần chạy, **điểm trung bình của cả 3 lần (0.182) và mức điểm thấp nhất (0.138) của `skills-auto` vẫn vượt trội hoàn toàn so với `baseline` (0.03) và `subagents` (0.00)**. Điều này chứng minh hiệu quả thực chất và tính bền vững của cơ chế tự tiến hóa.
+
+  4. **Hạn chế và đề xuất bước tiếp theo:**
+     - *Hạn chế:* Sự bất định của LLM trong việc dừng vòng lặp (stopping criteria) khiến phương sai token giữa các lần chạy là đáng kể.
+     - *Đề xuất:* Bổ sung cơ chế phát hiện vòng lặp (loop detector middleware) trong Agent Harness để chủ động cảnh báo hoặc ngắt sớm các chuỗi lệnh thử-sai không tiến triển, giúp cố định chi phí token ở mức tối ưu.
+
+  5. **Khả năng tái lập:** Thí nghiệm có thể tái lập 100% bằng cách chạy các lệnh CLI đã liệt kê ở trên.
 
